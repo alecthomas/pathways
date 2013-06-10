@@ -1,14 +1,12 @@
-# Pathways - an opinionated RESTful web service framework for Go
+# Pathways - a RESTful web service framework for Go
 
 The goal of Pathways is to make building RESTful web services simple.
 
-*Opinionated*, in the context of Pathways, simply means the API prefers API request context to be in the request body, not in query parameters.
-
-Pathways centers around the concept of services which define exactly how every endpoint in a web service is represented and handled. This provides several benefits, including the ability to construct client requests, and the ability to autogenerate API documentation.
+Pathways centers around the concept of services. Services define exactly how every endpoint in a web service is accessed and handled. This provides several benefits, including the ability to construct client requests, and the ability to autogenerate API documentation.
 
 ## Example
 
-Here's an example of creating an in-memory web service and client with Pathways:
+Here's an example of an in-memory key-value service and client with Pathways:
 
 ```go
 package main
