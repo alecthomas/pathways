@@ -7,27 +7,25 @@ import (
 	"strconv"
 )
 
-type Response func(w http.ResponseWriter)
-
-type RouteAction func(context *Context) Response
+type RouteAction func(context *Context) *Response
 
 func (r RouteAction) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	r(&Context{
 		Request:  request,
 		Response: writer,
-	})(writer)
+	}).Write()
 }
 
 // An action that returns
-func ApiNotFound(cx *Context) Response {
+func ApiNotFound(cx *Context) *Response {
 	return cx.ApiError(http.StatusNotFound, "Not Found")
 }
 
 func applyHandler(handler http.Handler) RouteAction {
-	return func(cx *Context) Response {
-		return func(w http.ResponseWriter) {
+	return func(cx *Context) *Response {
+		return ResponseFromContext(cx, func(w http.ResponseWriter) {
 			handler.ServeHTTP(w, cx.Request)
-		}
+		})
 	}
 }
 
@@ -43,7 +41,7 @@ func applyFunction(f interface{}, requestTemplateType interface{}) RouteAction {
 		panic("invalid function")
 	}
 
-	return func(cx *Context) Response {
+	return func(cx *Context) *Response {
 		defer cx.Request.Body.Close()
 		in := []reflect.Value{
 			reflect.ValueOf(cx),
@@ -58,7 +56,7 @@ func applyFunction(f interface{}, requestTemplateType interface{}) RouteAction {
 			in = append(in, v)
 		}
 		response := function.Call(in)
-		return response[0].Interface().(Response)
+		return response[0].Interface().(*Response)
 	}
 }
 

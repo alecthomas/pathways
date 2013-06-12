@@ -28,16 +28,16 @@ func (c *Context) InferContentType(defaultContentType string) string {
 }
 
 // Render a template.
-func (c *Context) ApiError(code int, error string) Response {
+func (c *Context) ApiError(code int, error string) *Response {
 	return c.ApiResponse(code, &ApiError{
 		Status: code,
 		Error:  error,
 	})
 }
 
-func (c *Context) ApiResponse(code int, response interface{}) Response {
-	return func(w http.ResponseWriter) {
+func (c *Context) ApiResponse(code int, response interface{}) *Response {
+	return ResponseFromContext(c, func(w http.ResponseWriter) {
 		contentType := c.InferContentType("application/json")
 		Serializers.EncodeResponse(w, code, contentType, response)
-	}
+	})
 }

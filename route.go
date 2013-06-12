@@ -100,8 +100,7 @@ func (r *Route) apply(writer http.ResponseWriter, request *http.Request) bool {
 			return false
 		}
 	}
-	response := r.action(cx)
-	response(writer)
+	r.action(cx).Write()
 	return true
 }
 
