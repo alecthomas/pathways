@@ -8,7 +8,21 @@ import (
 	"strings"
 )
 
+// Client request arguments.
 type Args map[string]string
+
+type ClientError struct {
+	status int
+	err    string
+}
+
+func (c *ClientError) StatusCode() int {
+	return c.status
+}
+
+func (c *ClientError) Error() string {
+	return c.err
+}
 
 // A HTTP client that uses named routes on a service to reconstruct and send requests.
 type Client struct {
@@ -26,36 +40,43 @@ func NewClient(service *Service, encoding string) *Client {
 	}
 }
 
-func (c *Client) Call(name string, args map[string]string, request interface{}, response interface{}) error {
+// Call an API endpoint.
+func (c *Client) Call(name string, args Args, request interface{}, response interface{}) (*http.Response, error) {
 	// Encode the body
 	bodyw := &bytes.Buffer{}
 	err := Serializers.Encode(c.encoding, bodyw, request)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	body := bodyw.Bytes()
 
 	req, err := c.MakeRequest(name, args, body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	resp, err := c.Client.Do(req)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
 	if err != nil {
-		return err
+		return nil, err
 	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return resp, &ClientError{
+			status: resp.StatusCode,
+			err:    fmt.Sprintf("HTTP error (%d): %s", resp.StatusCode, resp.Status),
+		}
+	}
+
 	// Decode response
 	ct := resp.Header.Get("Content-Type")
 	if !strings.HasPrefix(ct, c.encoding) {
-		return fmt.Errorf("expected %s response from %s, got %s", c.encoding, req.URL, ct)
+		return nil, fmt.Errorf("expected %s response from %s, got %s", c.encoding, req.URL, ct)
 	}
-	return Serializers.Decode(c.encoding, resp.Body, response)
+	return resp, Serializers.Decode(c.encoding, resp.Body, response)
 }
 
-func (c *Client) MakeRequest(name string, args map[string]string, body []byte) (*http.Request, error) {
+func (c *Client) MakeRequest(name string, args Args, body []byte) (*http.Request, error) {
 	// Send the request
 	route := c.service.Find(name)
 	url := route.Reverse(args)
@@ -71,14 +92,5 @@ func (c *Client) MakeRequest(name string, args map[string]string, body []byte) (
 	}
 	req.Header.Set("Content-Type", c.encoding)
 	req.Header.Set("Accept", c.encoding)
-	req.Close = true
 	return req, nil
-}
-
-func (c *Client) Do(name string, args Args, body []byte) (*http.Response, error) {
-	req, err := c.MakeRequest(name, args, body)
-	if err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
 }

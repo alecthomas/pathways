@@ -123,6 +123,7 @@ func (r *Route) Name(name string) *Route {
 	return r
 }
 
+// Specify the HTTP methods this endpoint accepts.
 func (r *Route) Methods(methods ...string) *Route {
 	r.methodMatch = realMatchMethods(methods...)
 	return r.Filter(r.methodMatch)
@@ -166,6 +167,10 @@ func (r *Route) Handler(handler http.Handler) *Route {
 	return r.Action(applyHandler(handler))
 }
 
+func (r *Route) HandlerFunc(handler http.HandlerFunc) *Route {
+	return r.Action(applyHandler(handler))
+}
+
 func (r *Route) ApiRequestType(t interface{}) *Route {
 	r.requestType = t
 	return r
@@ -198,7 +203,7 @@ func (r *Route) Method() string {
 func (r *Route) Reverse(args map[string]string) string {
 	path := r.path
 	for arg, value := range args {
-		// TODO: Handle {arg...}
+		// TODO: Handle remainder {arg...}
 		path = strings.Replace(path, "{"+arg+"}", value, 1)
 	}
 	return path
