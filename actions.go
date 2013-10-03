@@ -17,8 +17,8 @@ func (r RouteAction) ServeHTTP(writer http.ResponseWriter, request *http.Request
 }
 
 // An action that returns
-func ApiNotFound(cx *Context) *Response {
-	return cx.ApiError(http.StatusNotFound, "Not Found")
+func APINotFound(cx *Context) *Response {
+	return cx.APIError(http.StatusNotFound, "Not Found")
 }
 
 func applyHandler(handler http.Handler) RouteAction {
@@ -29,7 +29,7 @@ func applyHandler(handler http.Handler) RouteAction {
 	}
 }
 
-func applyFunction(f interface{}, requestTemplateType interface{}) RouteAction {
+func applyAPIFunction(f interface{}, requestTemplateType interface{}) RouteAction {
 	// TODO: Inspect arguments and return value of f to ensure correct types
 	requestType := reflect.TypeOf(requestTemplateType)
 	if requestType != nil && requestType.Kind() != reflect.Ptr {
@@ -51,9 +51,24 @@ func applyFunction(f interface{}, requestTemplateType interface{}) RouteAction {
 			ct := cx.InferContentType("application/json")
 			err := Serializers.DecodeRequest(cx.Request, ct, v.Interface())
 			if err != nil {
-				return cx.ApiError(http.StatusBadRequest, err.Error())
+				return cx.APIError(http.StatusBadRequest, err.Error())
 			}
 			in = append(in, v)
+		}
+		response := function.Call(in)
+		return response[0].Interface().(*Response)
+	}
+}
+
+func applyFunction(f interface{}) RouteAction {
+	function := reflect.ValueOf(f)
+	if function.Kind() != reflect.Func || !function.IsValid() {
+		panic("invalid function")
+	}
+	return func(cx *Context) *Response {
+		defer cx.Request.Body.Close()
+		in := []reflect.Value{
+			reflect.ValueOf(cx),
 		}
 		response := function.Call(in)
 		return response[0].Interface().(*Response)

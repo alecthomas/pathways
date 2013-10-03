@@ -2,7 +2,9 @@ package pathways
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
+	"path"
 	"strings"
 )
 
@@ -10,6 +12,7 @@ type Service struct {
 	root          string
 	routes        []*Route
 	defaultAction http.Handler
+	templateRoot  string
 }
 
 func NewService(root string) *Service {
@@ -18,6 +21,11 @@ func NewService(root string) *Service {
 		root:          root,
 		defaultAction: (http.HandlerFunc)(http.NotFound),
 	}
+}
+
+func (s *Service) TemplateRoot(path string) *Service {
+	s.templateRoot = path
+	return s
 }
 
 func (s *Service) DefaultHandler(action http.Handler) *Service {
@@ -43,6 +51,7 @@ func (s *Service) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 func (s *Service) Path(path string) *Route {
 	path = strings.TrimLeft(path, "/")
 	route := NewRoute(s.root + path)
+	route.templateRoot = s.templateRoot
 	s.routes = append(s.routes, route)
 	return route
 }
@@ -65,6 +74,8 @@ type Route struct {
 	action       RouteAction
 	requestType  interface{}
 	responseType interface{}
+	templateRoot string
+	template     *template.Template
 }
 
 func NewRoute(path string) *Route {
@@ -94,6 +105,7 @@ func (r *Route) apply(writer http.ResponseWriter, request *http.Request) bool {
 		Request:  request,
 		Response: writer,
 		Vars:     make(map[string]interface{}),
+		Template: r.template,
 	}
 	for _, filter := range r.filters {
 		if !filter.Accept(cx) {
@@ -102,6 +114,11 @@ func (r *Route) apply(writer http.ResponseWriter, request *http.Request) bool {
 	}
 	r.action(cx).Write()
 	return true
+}
+
+func (r *Route) Template(filename string) *Route {
+	r.template = template.Must(template.ParseFiles(path.Join(r.templateRoot, filename)))
+	return r
 }
 
 func (r *Route) Filter(filter StageAcceptor) *Route {
@@ -122,7 +139,7 @@ func (r *Route) Name(name string) *Route {
 	return r
 }
 
-// Specify the HTTP methods this endpoint accepts.
+// Methods (HTTP verbs) that this endpoint accepts.
 func (r *Route) Methods(methods ...string) *Route {
 	r.methodMatch = realMatchMethods(methods...)
 	return r.Filter(r.methodMatch)
@@ -170,27 +187,33 @@ func (r *Route) HandlerFunc(handler http.HandlerFunc) *Route {
 	return r.Action(applyHandler(handler))
 }
 
-func (r *Route) ApiRequestType(t interface{}) *Route {
+func (r *Route) APIRequestType(t interface{}) *Route {
 	r.requestType = t
 	return r
 }
 
-func (r *Route) ApiResponseType(t interface{}) *Route {
+func (r *Route) APIResponseType(t interface{}) *Route {
 	r.responseType = t
 	return r
 }
 
-// Handle this route with a function of the form func(*Context[, t]). If t is
-// provided by ApiRequestType(), it must be a pointer to a structure. The
-// request body will be decoded into a value of this type and passed to the
-// callback as the second argument. If t is nil, the request body is not
-// decoded, and no argument is passed.
-func (r *Route) ApiFunction(f interface{}) *Route {
-	return r.Action(applyFunction(f, r.requestType))
+// APIFunction handles this route with a function of the form func(*Context[,
+// t]). If t is provided by APIRequestType(), it must be a pointer to a
+// structure. The request body will be decoded into a value of this type and
+// passed to the callback as the second argument. If t is nil, the request
+// body is not decoded, and no argument is passed.
+func (r *Route) APIFunction(f interface{}) *Route {
+	return r.Action(applyAPIFunction(f, r.requestType))
 }
 
-// The HTTP method associated with this route. Will panic if route does not
-// have exactly one method.
+// Function specifies a function or method that will handle a raw request.
+// Unlike APIFunction, no attempt is made to serialize requests or responses.
+func (r *Route) Function(f interface{}) *Route {
+	return r.Action(applyFunction(f))
+}
+
+// Method returns the HTTP method associated with this route. Will panic if
+// route does not have exactly one method.
 func (r *Route) Method() string {
 	if len(r.methodMatch) != 1 {
 		panic("no methods available")

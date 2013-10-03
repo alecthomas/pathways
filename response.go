@@ -24,10 +24,15 @@ func (r *Response) ContentType(ct string) *Response {
 	return r.Header("Content-Type", ct)
 }
 
+func (r *Response) Location(url string) *Response {
+	return r.Header("Location", url)
+}
+
 func (r *Response) Header(key, value string) *Response {
 	r.Response.Header().Add(key, value)
 	return r
 }
 
 func (r *Response) Write() {
+	r.writer(r.Response)
 }

@@ -1,10 +1,10 @@
 package pathways
 
 import (
-	"code.google.com/p/vitess/go/bson"
 	"encoding/json"
 	"errors"
 	"github.com/vmihailenco/msgpack"
+	"github.com/youtube/vitess/go/bson"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -33,7 +33,7 @@ func (s SerializerMap) Decode(ct string, r io.Reader, v interface{}) error {
 	return UnsupportedContentType
 }
 
-type ApiError struct {
+type APIError struct {
 	Status int
 	Error  string
 }
@@ -49,7 +49,7 @@ func (s SerializerMap) EncodeResponse(w http.ResponseWriter, code int, contentTy
 		w.WriteHeader(http.StatusBadRequest)
 		ser := s["application/json"]
 		err := "Invalid content type " + contentType
-		s.rawEncode(ser, w, &ApiError{
+		s.rawEncode(ser, w, &APIError{
 			Status: code,
 			Error:  err,
 		})

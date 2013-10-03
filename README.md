@@ -23,10 +23,10 @@ type KeyValueService struct {
 
 func KeyValueServiceMap(root string) *pathways.Service {
     s := pathways.NewService(root)
-    s.Path("/").Name("List").Get().ApiResponseType(map[string]string{})
+    s.Path("/").Name("List").Get().APIResponseType(map[string]string{})
     str := ""
-    s.Path("/{key}").Name("Get").Get().ApiResponseType(&str)
-    s.Path("/{key}").Name("Create").Post().ApiRequestType(&str)
+    s.Path("/{key}").Name("Get").Get().APIResponseType(&str)
+    s.Path("/{key}").Name("Create").Post().APIRequestType(&str)
     s.Path("/{key}").Name("Delete").Delete()
     return s
 }
@@ -41,10 +41,10 @@ func NewKeyValueService(root string) *KeyValueService {
         service: KeyValueServiceMap(root),
         kv:      make(map[string]string),
     }
-    k.service.Find("List").ApiFunction(k.List)
-    k.service.Find("Get").ApiFunction(k.Get)
-    k.service.Find("Create").ApiFunction(k.Create)
-    k.service.Find("Delete").ApiFunction(k.Delete)
+    k.service.Find("List").APIFunction(k.List)
+    k.service.Find("Get").APIFunction(k.Get)
+    k.service.Find("Create").APIFunction(k.Create)
+    k.service.Find("Delete").APIFunction(k.Delete)
     return k
 }
 
@@ -53,21 +53,21 @@ func (k *KeyValueService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (k *KeyValueService) List(cx *pathways.Context) pathways.Response {
-    return cx.ApiResponse(http.StatusOK, k.kv)
+    return cx.APIResponse(http.StatusOK, k.kv)
 }
 
 func (k *KeyValueService) Get(cx *pathways.Context) pathways.Response {
-    return cx.ApiResponse(http.StatusOK, k.kv[cx.PathVars["key"]])
+    return cx.APIResponse(http.StatusOK, k.kv[cx.PathVars["key"]])
 }
 
 func (k *KeyValueService) Create(cx *pathways.Context, value *string) pathways.Response {
     k.kv[cx.PathVars["key"]] = *value
-    return cx.ApiResponse(http.StatusCreated, "ok")
+    return cx.APIResponse(http.StatusCreated, "ok")
 }
 
 func (k *KeyValueService) Delete(cx *pathways.Context) pathways.Response {
     delete(k.kv, cx.PathVars["key"])
-    return cx.ApiResponse(http.StatusOK, &struct{}{})
+    return cx.APIResponse(http.StatusOK, &struct{}{})
 }
 
 func main() {
@@ -112,12 +112,12 @@ type KeyValueService struct {
 
 func (k *KeyValueService) Create(cx *pathways.Context, req *CreateRequest) pathways.Response {
     // ... do something with deserialized request
-    return cx.ApiResponse(http.StatusOK, &CreateResponse{})
+    return cx.APIResponse(http.StatusOK, &CreateResponse{})
 }
 
 kvs := &KeyValueService{}
 
-s.Path("/{key}").Name("Create").Post().ApiRequestType(&CreateRequest{}).ApiResponseType(&CreateResponse{}).ApiFunction(kvs.Create)
+s.Path("/{key}").Name("Create").Post().APIRequestType(&CreateRequest{}).APIResponseType(&CreateResponse{}).APIFunction(kvs.Create)
 ```
 
 ### RESTful client using the service definition
